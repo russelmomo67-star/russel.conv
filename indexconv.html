@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUSSEL CONV(X)</title>
+    <style>
+        /* --- STYLE CSS (Le Design) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+        :root {
+            --primary-color: #5f27cd;
+            --secondary-color: #ff9f43;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient); /* Le mix de couleurs */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* En-tête du site */
+        header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+        }
+
+        h1 span {
+            color: var(--secondary-color); /* Le (X) en orange */
+        }
+
+        /* La boîte de conversion */
+        .converter-container {
+            background: var(--glass-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* Boutons et Contrôles */
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .btn-swap {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 10px rgba(95, 39, 205, 0.4);
+        }
+
+        .btn-swap:hover {
+            transform: rotate(180deg) scale(1.1);
+            background: #4a1eb8;
+        }
+
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f3ff;
+            border-radius: 15px;
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        .result-text {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary-color);
+        }
+
+        .rate-info {
+            font-size: 0.9rem;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        /* Animation simple */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .converter-container {
+            animation: fadeIn 0.8s ease-out;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>RUSSEL CONV<span>(X)</span></h1>
+    </header>
+
+    <main class="converter-container">
+        <div class="input-group">
+            <label for="amount">Montant à convertir</label>
+            <input type="number" id="amount" placeholder="0" value="1">
+        </div>
+
+        <div class="controls">
+            <div style="width: 40%;">
+                <label for="currency-one">De</label>
+                <select id="currency-one"></select>
+            </div>
+
+            <button class="btn-swap" id="swap" title="Inverser les devises">⇄</button>
+
+            <div style="width: 40%;">
+                <label for="currency-two">Vers</label>
+                <select id="currency-two"></select>
+            </div>
+        </div>
+
+        <div class="result-box">
+            <div class="result-text" id="result">Calcul...</div>
+            <div class="rate-info" id="rate-info"></div>
+        </div>
+    </main>
+
+    <script>
+        /* --- JAVASCRIPT (La logique) --- */
+        
+        const currencyEl_one = document.getElementById('currency-one');
+        const currencyEl_two = document.getElementById('currency-two');
+        const amountEl = document.getElementById('amount');
+        const resultEl = document.getElementById('result');
+        const rateEl = document.getElementById('rate-info');
+        const swapBtn = document.getElementById('swap');
+
+        // URL de l'API gratuite (ne nécessite pas de clé pour un usage basique)
+        const API_URL = 'https://api.exchangerate-api.com/v4/latest/';
+
+        // 1. Fonction pour récupérer la liste des monnaies et remplir les menus
+        async function loadCurrencies() {
+            try {
+                const res = await fetch(`${API_URL}USD`);
+                const data = await res.json();
+                const currencies = Object.keys(data.rates);
+
+                // Ajoute chaque monnaie dans les listes déroulantes
+                currencies.forEach(currency => {
+                    const option1 = document.createElement('option');
+                    option1.value = currency;
+                    option1.innerText = currency;
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = currency;
+                    option2.innerText = currency;
+
+                    currencyEl_one.appendChild(option1);
+                    currencyEl_two.appendChild(option2);
+                });
+
+                // Valeurs par défaut (EUR et USD)
+                currencyEl_one.value = 'EUR';
+                currencyEl_two.value = 'USD';
+                
+                calculate(); // Lance un premier calcul
+            } catch (err) {
+                resultEl.innerText = "Erreur de connexion";
+                console.error(err);
+            }
+        }
+
+        // 2. Fonction pour calculer le taux de change
+        function calculate() {
+            const currency_one = currencyEl_one.value;
+            const currency_two = currencyEl_two.value;
+            const amount = amountEl.value;
+
+            // Appel à l'API pour récupérer les taux basés sur la première monnaie
+            fetch(`${API_URL}${currency_one}`)
+                .then(res => res.json())
+                .then(data => {
+                    const rate = data.rates[currency_two];
+                    
+                    // Affiche le résultat
+                    const convertedAmount = (amount * rate).toFixed(2);
+                    resultEl.innerText = `${convertedAmount} ${currency_two}`;
+                    
+                    // Affiche le petit texte explicatif
+                    rateEl.innerText = `1 ${currency_one} = ${rate} ${currency_two}`;
+                });
+        }
+
+        // 3. Écouteurs d'événements (Quand on change une valeur)
+        currencyEl_one.addEventListener('change', calculate);
+        amountEl.addEventListener('input', calculate);
+        currencyEl_two.addEventListener('change', calculate);
+
+        // 4. Bouton pour inverser les monnaies
+        swapBtn.addEventListener('click', () => {
+            const temp = currencyEl_one.value;
+            currencyEl_one.value = currencyEl_two.value;
+            currencyEl_two.value = temp;
+            calculate();
+        });
+
+        // Lancement au démarrage
+        loadCurrencies();
+
+    </script>
+</body>
+</html>
